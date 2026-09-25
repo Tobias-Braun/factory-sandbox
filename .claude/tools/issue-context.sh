@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints what an agent needs to know about one issue, as compact Markdown: title, labels, body,
-# the factory state, the agent's own in-place comments, and the conversation since the agent last
-# commented. Comments by anyone other than the human and the bot are left out (they are not input).
+# the factory state, all agents' in-place comments (e.g. the acceptance criteria), and the
+# conversation since the agent last commented. Comments by anyone other than the human and the bot are left out (they are not input).
 #
 # Usage: .claude/tools/issue-context.sh [issue-number]   (default: $FACTORY_ISSUE)
 # Needs FACTORY_REPO, FACTORY_AGENT, FACTORY_HUMAN and FACTORY_BOT, which the dispatcher sets.
@@ -25,10 +25,11 @@ jq -rn --argjson issue "$issue" --argjson comments "$comments" --arg agent "${FA
     "", "## Body (by \($issue.user.login), never edit it)", "", ($issue.body // "(empty)"),
     "", "## Factory state",
     ([$trusted[] | select(is_state) | .body | capture("<!-- factory-state (?<j>\\{.*?\\}) -->").j] | first // "{}"),
-    "", "## Your in-place comments (edit them with upsert-comment.sh)",
-    (([$trusted[] | select(mine and marker != null)]) as $own
-     | if ($own | length) == 0 then "(none yet)"
-       else $own[] | "### factory:\(marker) (updated \(.updated_at))\n\n\(.body)" end),
+    "", "## Comments kept in place (acceptance criteria and other agent records)",
+    "Edit only your own, with upsert-comment.sh.",
+    (([$trusted[] | select(.user.login == $bot and marker != null)]) as $kept
+     | if ($kept | length) == 0 then "(none yet)"
+       else $kept[] | "", "### factory:\(marker) by \(author) (updated \(.updated_at))", "", .body end),
     "", "## Conversation",
     (if $last_mine == null then "(all comments)"
      else "(earlier comments omitted; it starts with your last comment)" end),
