@@ -9,6 +9,10 @@
 #   - merging PRs (gh pr merge, the REST merge endpoint, GraphQL merge/auto-merge, GitHub MCP)
 #   - pushing to main, pushing all branches, and force-pushing
 #   - changing .claude/, .devcontainer/ or factory.conf (edit tools and common shell writes)
+#   - writing commit statuses or check runs directly; the review agent sets `factory/review`
+#     through .claude/tools/set-review.sh, which no other agent may run
+#   - for the review agent (FACTORY_AGENT=review-agent): editing files outside /tmp, committing
+#     and pushing, since the reviewer never changes the code it reviews
 # It is a heuristic, not a shell parser. Branch protection stays the real barrier for main.
 #
 # Exit code 2 blocks the call and shows the reason to the agent. If the tool call can't be parsed,
@@ -20,6 +24,8 @@ block() {
 }
 
 PROTECTED_MSG="agents never change .claude/, .devcontainer/ or factory.conf"
+# Set by the dispatcher for the whole run; the agent can't change the hook's environment.
+AGENT="${FACTORY_AGENT:-}"
 
 input="$(cat)"
 tool="$(jq -r '.tool_name // empty' <<<"$input" 2>/dev/null)" || block "could not parse the tool call"
@@ -72,6 +78,8 @@ check_git() {
     i=$((i + 1))
   done
   local sub="${args[i]}"
+  [[ "$AGENT" == review-agent && "$sub" =~ ^(commit|push|merge|rebase|cherry-pick|revert|am|tag)$ ]] &&
+    block "the review agent never changes the code it reviews"
   case "$sub" in
     push) check_push "${args[@]:i+1}" ;;
     rm | mv | restore | checkout) check_write "$sub" "${args[@]:i+1}" ;;
@@ -93,6 +101,8 @@ check_http() {
   [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/issues[[:space:]?] ]] && block "agents never create issues"
   [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+[[:space:]?] ]] &&
     block "agents only label and comment on issues, never edit or close them"
+  [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/(statuses|check-runs)([/[:space:]?]) ]] &&
+    block "commit statuses come only from the review agent, through .claude/tools/set-review.sh"
   return 0
 }
 
@@ -165,6 +175,7 @@ check_segment() {
 
   check_redirects "${words[@]}"
   local cmd="${words[0]##*/}"
+  [[ "$cmd" == set-review.sh && "$AGENT" != review-agent ]] && block "only the review agent sets factory/review"
   case "$cmd" in
     git) check_git "${words[@]:1}" ;;
     gh) check_gh "${words[@]:1}" ;;
@@ -189,7 +200,10 @@ check_command() {
 case "$tool" in
   Edit | Write | MultiEdit | NotebookEdit)
     path="$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<<"$input")"
-    is_protected "$path" && block "$PROTECTED_MSG" ;;
+    is_protected "$path" && block "$PROTECTED_MSG"
+    # The reviewer's notes (e.g. the findings for set-review.sh) go to /tmp, never into the repo.
+    [[ "$AGENT" == review-agent && ("$path" != /tmp/* || "$path" == *..* || "$path" == "$project_dir"/*) ]] &&
+      block "the review agent never edits files; write notes to /tmp" ;;
   Bash)
     command="$(jq -r '.tool_input.command // empty' <<<"$input")"
     # GraphQL mutations usually sit inside a quoted multi-line query, so check the raw text.
