@@ -1,0 +1,9 @@
+{
+  "name": "factory-agent",
+  "dockerComposeFile": "compose.yaml",
+  "service": "agent",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode",
+  "postCreateCommand": "git config --global credential.helper '!gh auth git-credential'",
+  "shutdownAction": "stopCompose"
+}
