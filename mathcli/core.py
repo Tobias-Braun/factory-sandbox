@@ -88,4 +88,4 @@ def _eval_node(node):
         return _BIN_OPS[type(node.op)](left, right)
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
         return _UNARY_OPS[type(node.op)](_eval_node(node.operand))
-    raise CalcError(f"unsupported syntax near {ast.dump(node)}")
+    raise CalcError(f"unsupported syntax in expression: {ast.unparse(node)!r}")

@@ -62,6 +62,12 @@ class CalcTests(unittest.TestCase):
         with self.assertRaises(CalcError):
             evaluate("__import__('os').system('echo hi')")
 
+    def test_leading_negative(self):
+        self.assertEqual(evaluate("-5+3"), -2)
+
+    def test_negated_parentheses(self):
+        self.assertEqual(evaluate("-(2+3)"), -5)
+
 
 class CliTests(unittest.TestCase):
     def _run(self, argv):
@@ -79,6 +85,16 @@ class CliTests(unittest.TestCase):
         code, out = self._run(["calc", "(2+3)*4"])
         self.assertEqual(code, 0)
         self.assertEqual(out.strip(), "20")
+
+    def test_calc_command_leading_negative(self):
+        code, out = self._run(["calc", "-5+3"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), "-2")
+
+    def test_calc_command_negated_parentheses(self):
+        code, out = self._run(["calc", "-(2+3)"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.strip(), "-5")
 
     def test_invalid_input_reports_error_without_traceback(self):
         stderr = io.StringIO()

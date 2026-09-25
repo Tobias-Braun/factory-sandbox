@@ -24,6 +24,11 @@ def build_parser():
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["calc"] and argv[1:2] != ["--"]:
+        # Without "--", argparse treats an expression starting with "-" (e.g. "-5+3")
+        # as an unknown option instead of the positional "expression" argument.
+        argv = [argv[0], "--", *argv[1:]]
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
