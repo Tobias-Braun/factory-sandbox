@@ -202,7 +202,7 @@ case "$tool" in
     path="$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<<"$input")"
     is_protected "$path" && block "$PROTECTED_MSG"
     # The reviewer's notes (e.g. the findings for set-review.sh) go to /tmp, never into the repo.
-    [[ "$AGENT" == review-agent && ("$path" != /tmp/* || "$path" == *..*) ]] &&
+    [[ "$AGENT" == review-agent && ("$path" != /tmp/* || "$path" == *..* || "$path" == "$project_dir"/*) ]] &&
       block "the review agent never edits files; write notes to /tmp" ;;
   Bash)
     command="$(jq -r '.tool_input.command // empty' <<<"$input")"
