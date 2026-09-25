@@ -1,0 +1,15 @@
+[project]
+name = "mathcli"
+version = "0.1.0"
+description = "A CLI for common math questions: Fibonacci numbers, ranked primes and arithmetic expressions."
+requires-python = ">=3.9"
+
+[project.scripts]
+mathcli = "mathcli.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mathcli"]
