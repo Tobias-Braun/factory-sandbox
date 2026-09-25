@@ -5,6 +5,7 @@
 # refspecs like HEAD:main, `gh api` instead of `gh issue create`, or a shell redirect into a
 # protected file. This hook inspects every tool call and blocks the factory's forbidden actions:
 #   - creating issues (gh issue create/transfer, REST or GraphQL via gh api or curl, GitHub MCP)
+#   - editing the title or body of an issue, or closing, reopening or deleting it
 #   - merging PRs (gh pr merge, the REST merge endpoint, GraphQL merge/auto-merge, GitHub MCP)
 #   - pushing to main, pushing all branches, and force-pushing
 #   - changing .claude/, .devcontainer/ or factory.conf (edit tools and common shell writes)
@@ -78,22 +79,37 @@ check_git() {
 }
 
 # Covers gh api, curl and similar: creating an issue is a write to .../issues (gh api turns into a
-# POST as soon as fields are passed), merging is anything on .../pulls/<n>/merge.
+# POST as soon as fields are passed), editing or closing one is a write to .../issues/<n> (labels
+# and comments live below it and stay allowed), merging is anything on .../pulls/<n>/merge.
 check_http() {
-  local joined=" $* "
+  local joined=" $* " write=0
   [[ "$joined" =~ /pulls/[0-9]+/merge[[:space:]?] ]] && block "only Tobi merges PRs"
-  [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/issues[[:space:]?] ]] || return 0
   [[ "$joined" =~ [[:space:]](-X|--method|--request)[[:space:]=]*GET ]] && return 0
-  if [[ "$joined" =~ [[:space:]](-X|--method|--request)[[:space:]=]*POST ]] ||
+  if [[ "$joined" =~ [[:space:]](-X|--method|--request)[[:space:]=]*(POST|PATCH|PUT|DELETE) ]] ||
     [[ "$joined" =~ [[:space:]](-f|-F|--field|--raw-field|--input|-d|--data|--data-raw|--json)[[:space:]=] ]]; then
-    block "agents never create issues"
+    write=1
   fi
+  ((write)) || return 0
+  [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/issues[[:space:]?] ]] && block "agents never create issues"
+  [[ "$joined" =~ repos/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+[[:space:]?] ]] &&
+    block "agents only label and comment on issues, never edit or close them"
   return 0
 }
 
 check_gh() {
+  local a
   case "$1 $2" in
     "issue create" | "issue new" | "issue transfer") block "agents never create issues" ;;
+    "issue close" | "issue reopen" | "issue delete" | "issue lock" | "issue unlock" | "issue pin" | "issue unpin")
+      block "agents only label and comment on issues, never edit or close them" ;;
+    "issue edit")
+      # Labels are the agents' part of an issue; title and body are Tobi's.
+      for a in "${@:3}"; do
+        case "$a" in
+          -t | -b | -F | --title | --title=* | --body | --body=* | --body-file | --body-file=* | -t* | -b* | -F*)
+            block "agents only label and comment on issues, never edit or close them" ;;
+        esac
+      done ;;
     "pr merge") block "only Tobi merges PRs" ;;
   esac
   [[ "$1" == api ]] && check_http "$@"
@@ -179,6 +195,8 @@ case "$tool" in
     # GraphQL mutations usually sit inside a quoted multi-line query, so check the raw text.
     if [[ "$command" == *graphql* ]]; then
       [[ "$command" == *createIssue* ]] && block "agents never create issues"
+      [[ "$command" == *updateIssue\(* || "$command" == *closeIssue* || "$command" == *deleteIssue* ]] &&
+        block "agents only label and comment on issues, never edit or close them"
       [[ "$command" == *mergePullRequest* || "$command" == *enablePullRequestAutoMerge* ]] && block "only Tobi merges PRs"
     fi
     check_command "$command" ;;
@@ -186,7 +204,9 @@ case "$tool" in
     case "$tool" in
       *create_issue* | *merge_pull_request*) block "agents never create issues or merge PRs" ;;
       *issue_write*)
-        [[ "$(jq -r '.tool_input.method // empty' <<<"$input")" == create ]] && block "agents never create issues" ;;
+        [[ "$(jq -r '.tool_input.method // empty' <<<"$input")" == create ]] && block "agents never create issues"
+        jq -e '.tool_input | has("title") or has("body") or has("state")' <<<"$input" >/dev/null &&
+          block "agents only label and comment on issues, never edit or close them" ;;
       *push_files* | *create_or_update_file* | *delete_file*)
         [[ "$(jq -r '.tool_input.branch // empty' <<<"$input")" == main ]] && block "pushing to main is not allowed" ;;
     esac ;;
