@@ -3,7 +3,7 @@ import io
 import unittest
 
 from mathcli.cli import main
-from mathcli.core import CalcError, evaluate, fibonacci, primes_range
+from mathcli.core import CalcError, evaluate, fibonacci, perfect_range, primes_range
 
 
 class FibonacciTests(unittest.TestCase):
@@ -38,6 +38,22 @@ class PrimesTests(unittest.TestCase):
     def test_non_positive_raises(self):
         with self.assertRaises(ValueError):
             primes_range(0, 5)
+
+
+class PerfectTests(unittest.TestCase):
+    def test_first_four(self):
+        self.assertEqual(perfect_range(1, 4), [6, 28, 496, 8128])
+
+    def test_2_to_3(self):
+        self.assertEqual(perfect_range(2, 3), [28, 496])
+
+    def test_start_greater_than_end_raises(self):
+        with self.assertRaises(ValueError):
+            perfect_range(3, 1)
+
+    def test_non_positive_raises(self):
+        with self.assertRaises(ValueError):
+            perfect_range(0, 4)
 
 
 class CalcTests(unittest.TestCase):
@@ -80,6 +96,11 @@ class CliTests(unittest.TestCase):
         code, out = self._run(["fib", "5"])
         self.assertEqual(code, 0)
         self.assertEqual(out.splitlines(), ["0", "1", "1", "2", "3"])
+
+    def test_perfect_command(self):
+        code, out = self._run(["perfect", "1", "4"])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.splitlines(), ["6", "28", "496", "8128"])
 
     def test_calc_command(self):
         code, out = self._run(["calc", "(2+3)*4"])

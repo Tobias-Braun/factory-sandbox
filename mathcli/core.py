@@ -1,4 +1,4 @@
-"""Math logic behind the mathcli subcommands: fib, primes and calc."""
+"""Math logic behind the mathcli subcommands: fib, primes, perfect and calc."""
 
 import ast
 import operator
@@ -41,6 +41,39 @@ def primes_range(start, end):
     while count < end:
         n += 1
         if _is_prime(n):
+            count += 1
+            if count >= start:
+                result.append(n)
+    return result
+
+
+def _is_perfect(n):
+    if n < 2:
+        return False
+    divisor_sum = 1
+    i = 2
+    while i * i <= n:
+        if n % i == 0:
+            divisor_sum += i
+            j = n // i
+            if j != i:
+                divisor_sum += j
+        i += 1
+    return divisor_sum == n
+
+
+def perfect_range(start, end):
+    """Return the start-th through end-th smallest perfect numbers (1-indexed, inclusive)."""
+    if start < 1 or end < 1:
+        raise ValueError("start and end must be positive integers")
+    if start > end:
+        raise ValueError(f"start must not be greater than end, got {start} > {end}")
+    result = []
+    n = 1
+    count = 0
+    while count < end:
+        n += 1
+        if _is_perfect(n):
             count += 1
             if count >= start:
                 result.append(n)
