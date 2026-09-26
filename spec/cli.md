@@ -19,6 +19,15 @@ inclusive), one per line, in ascending order.
 - `<start>` and `<end>` must be positive integers with `<start> <= <end>`.
 - Example: `mathcli primes 1 5` prints the first 5 primes: `2, 3, 5, 7, 11`.
 
+### `mathcli perfect <start> <end>`
+
+Prints the `<start>`-th through `<end>`-th smallest perfect numbers (1-indexed, both ends
+inclusive), one per line, in ascending order. A perfect number is a positive integer equal to the
+sum of its proper divisors (e.g. `6 = 1+2+3`, `28 = 1+2+4+7+14`).
+
+- `<start>` and `<end>` must be positive integers with `<start> <= <end>`.
+- Example: `mathcli perfect 1 4` prints the first 4 perfect numbers: `6, 28, 496, 8128`.
+
 ### `mathcli calc <expression>`
 
 Evaluates `<expression>` as an arithmetic expression and prints the result.

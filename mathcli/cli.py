@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from .core import evaluate, fibonacci, primes_range
+from .core import evaluate, fibonacci, perfect_range, primes_range
 
 
 def build_parser():
@@ -16,6 +16,10 @@ def build_parser():
     primes_p = sub.add_parser("primes", help="Print the <start>-th through <end>-th smallest primes.")
     primes_p.add_argument("start", type=int)
     primes_p.add_argument("end", type=int)
+
+    perfect_p = sub.add_parser("perfect", help="Print the <start>-th through <end>-th smallest perfect numbers.")
+    perfect_p.add_argument("start", type=int)
+    perfect_p.add_argument("end", type=int)
 
     calc_p = sub.add_parser("calc", help="Evaluate an arithmetic expression.")
     calc_p.add_argument("expression")
@@ -37,6 +41,9 @@ def main(argv=None):
                 print(n)
         elif args.command == "primes":
             for p in primes_range(args.start, args.end):
+                print(p)
+        elif args.command == "perfect":
+            for p in perfect_range(args.start, args.end):
                 print(p)
         elif args.command == "calc":
             print(evaluate(args.expression))

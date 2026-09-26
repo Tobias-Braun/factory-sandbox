@@ -5,4 +5,4 @@ they add, move or split a spec file.
 
 | File | Contents |
 |---|---|
-| `cli.md` | `mathcli` subcommands (`fib`, `primes`, `calc`), their arguments, output format and errors. |
+| `cli.md` | `mathcli` subcommands (`fib`, `primes`, `perfect`, `calc`), their arguments, output format and errors. |
